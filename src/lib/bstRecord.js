@@ -6,12 +6,12 @@
 //  - camps opcionals a null en lloc d'ometre'ls, perquè l'estructura sigui fixa
 // L'esquema complet és a docs/bst-donation-record.schema.json
 
-import { DONOR, POINTS, DONATION_TYPES } from '../data.js'
+import { DONOR, CENTERS, DONATION_TYPES } from '../data.js'
 
 export const SCHEMA_ID = 'https://bst.cat/schemas/donation-record/1.0.json'
 export const SCHEMA_VERSION = '1.0.0'
 
-const pointByCode = (code) => POINTS.find((p) => p.code === code)
+const pointByCode = (code) => CENTERS.find((p) => p.code === code)
 const typeById = (id) => DONATION_TYPES.find((t) => t.id === id)
 
 function donorBlock() {

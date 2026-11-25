@@ -3,7 +3,7 @@ import { Card } from '../components/ui.jsx'
 
 export default function Impact({ state }) {
   const byType = (t) => state.donations.filter((d) => d.type === t)
-  const blood = byType('whole_blood').reduce((a, d) => a + d.volume, 0) + 450 // + donacions prèvies a l'app
+  const blood = byType('whole_blood').reduce((a, d) => a + d.volume, 0) + 450 // donació feta abans de registrar-se a l'app
   const plasma = byType('plasma').reduce((a, d) => a + d.volume, 0)
   const platelets = byType('platelets').reduce((a, d) => a + d.volume, 0)
   const points = 21

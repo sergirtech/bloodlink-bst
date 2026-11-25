@@ -1,12 +1,13 @@
 import Icon from '../components/Icon.jsx'
 import { Button, Card, Chip } from '../components/ui.jsx'
 import JsonViewer from '../components/JsonViewer.jsx'
-import { DONATION_TYPES, POINTS } from '../data.js'
+import { DONATION_TYPES, CENTERS as POINTS } from '../data.js'
 import { fmtDateTime } from '../lib/dates.js'
+import { setAppointmentStatus } from '../lib/db.js'
 
 export default function Confirmation({ state, update, go, notify }) {
   const appt = state.appointment
-  if (!appt) {
+  if (!appt || appt.status === 'cancelled') {
     return (
       <div className="content center">
         <p className="muted">Encara no tens cap cita reservada.</p>
@@ -25,8 +26,8 @@ export default function Confirmation({ state, update, go, notify }) {
       </div>
       <div className="done">
         <span className="done-ic"><Icon name="check" size={46} stroke={2.6} /></span>
-        <h1 className="h-xl">Cita confirmada!</h1>
-        <p className="muted">T'enviarem un recordatori per SMS i correu el dia abans.</p>
+        <h1 className="h-xl">{appt.status === 'completed' ? 'Donació feta. Gràcies!' : 'Cita confirmada!'}</h1>
+        <p className="muted">{appt.status === 'completed' ? 'El BST ja ha registrat la teva donació. La trobaràs al teu historial.' : "T'enviarem un recordatori per SMS i correu el dia abans."}</p>
       </div>
 
       <Card>
@@ -44,7 +45,7 @@ export default function Confirmation({ state, update, go, notify }) {
       <JsonViewer data={appt.record} filename={`${appt.id}.json`} notify={notify} title="Registre de cita (JSON)" />
 
       <Button icon="dropFill" onClick={() => go('home')}>Tornar a l'inici</Button>
-      <Button variant="ghost" icon="x" onClick={() => { update({ appointment: null }); notify('Cita cancel·lada'); go('home') }}>Cancel·lar la cita</Button>
+      <Button variant="ghost" icon="x" onClick={async () => { await setAppointmentStatus(appt.id, 'cancelled'); update({ appointment: null }); notify('Cita cancel·lada'); go('home') }}>Cancel·lar la cita</Button>
     </div>
   )
 }

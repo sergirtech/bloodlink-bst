@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import Icon from '../components/Icon.jsx'
 import { Button, Card, Chip, Stars } from '../components/ui.jsx'
-import { DONOR, ZONES, RATING_FIELDS } from '../data.js'
+import { DONOR, ZONES, RATING_FIELDS, CENTERS } from '../data.js'
+import { addPost } from '../lib/db.js'
 import { timeAgo } from '../lib/dates.js'
 
 const EMPTY = { time: 0, satisfaction: 0, again: 0 }
@@ -30,6 +31,8 @@ export default function Community({ state, update, notify }) {
   const [zone, setZone] = useState('mine')
   const [order, setOrder] = useState('new')
   const [showFilters, setShowFilters] = useState(true)
+  const [center, setCenter] = useState('BST-MOB-UPC')
+  const [saving, setSaving] = useState(false)
 
   const posts = useMemo(() => {
     const filtered = state.posts.filter((p) => zone === 'all' || (zone === 'mine' ? p.zone === DONOR.zone : p.zone === zone))
@@ -41,13 +44,22 @@ export default function Community({ state, update, notify }) {
   const summary = RATING_FIELDS.map((f) => [f, avg(rated.map((p) => p.ratings[f.key]))])
 
   const complete = !rate || Object.values(ratings).every((v) => v > 0)
-  const publish = () => {
+  const publish = async () => {
     if (!text.trim() || !complete) return
-    const post = {
-      id: Date.now(), author: DONOR.fullName, place: DONOR.zone, zone: DONOR.zone, minutesAgo: 0,
-      text: text.trim(), ratings: rate ? ratings : null,
+    const c = rate ? CENTERS.find((x) => x.code === center) : null
+    setSaving(true)
+    try {
+      const post = await addPost({
+        author: DONOR.fullName, place: c ? c.name : DONOR.zone, zone: c ? c.zone : DONOR.zone, centerCode: c ? c.code : null,
+        text: text.trim(), ratings: rate ? ratings : null,
+      })
+      update({ posts: [post, ...state.posts.filter((p) => p.id !== post.id)] })
+    } catch (e) {
+      notify(`No s'ha pogut publicar: ${e.message}`)
+      return
+    } finally {
+      setSaving(false)
     }
-    update({ posts: [post, ...state.posts] })
     setText('')
     setRatings(EMPTY)
     setZone('mine')
@@ -80,11 +92,19 @@ export default function Community({ state, update, notify }) {
               <span className="switch" /> {rate ? 'Sí' : 'És una pregunta'}
             </label>
           </div>
+          {rate && (
+            <label className="center-select">
+              <span className="rating-label">On has donat?</span>
+              <select value={center} onChange={(e) => setCenter(e.target.value)}>
+                {CENTERS.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+              </select>
+            </label>
+          )}
           {rate && <RatingRows ratings={ratings} onChange={setRatings} size={22} />}
           {rate && !complete && text.trim() && <p className="xs red">Valora els tres apartats per publicar.</p>}
         </div>
 
-        <Button icon="send" onClick={publish} disabled={!text.trim() || !complete}>Publicar missatge</Button>
+        <Button icon="send" onClick={publish} disabled={!text.trim() || !complete || saving}>{saving ? 'Publicant…' : 'Publicar missatge'}</Button>
       </Card>
 
       <div className="row between">

@@ -1,6 +1,6 @@
 import Icon from '../components/Icon.jsx'
 import { Button, Card, Chip } from '../components/ui.jsx'
-import { DONOR, POINTS, DONATION_TYPES } from '../data.js'
+import { DONOR, CENTERS as POINTS, DONATION_TYPES } from '../data.js'
 import { fmtDateTime } from '../lib/dates.js'
 
 // QR decoratiu amb la gota al centre (com al disseny)

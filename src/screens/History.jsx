@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import Icon from '../components/Icon.jsx'
 import { Card, Chip } from '../components/ui.jsx'
 import JsonViewer from '../components/JsonViewer.jsx'
-import { DONATION_TYPES, POINTS } from '../data.js'
+import { DONATION_TYPES, CENTERS as POINTS } from '../data.js'
 import { donationHistoryRecord } from '../lib/bstRecord.js'
 import { fmtDate } from '../lib/dates.js'
 

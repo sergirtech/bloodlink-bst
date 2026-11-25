@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Icon from './components/Icon.jsx'
 import { Avatar } from './components/ui.jsx'
-import { POSTS, DONATIONS } from './data.js'
+import { DONOR } from './data.js'
+import { MODE, listPosts, listDonations, listAppointments, subscribe } from './lib/db.js'
+import Backoffice from './backoffice/Backoffice.jsx'
 import Login from './screens/Login.jsx'
 import Home from './screens/Home.jsx'
 import Donate from './screens/Donate.jsx'
@@ -31,16 +33,53 @@ const JUMP = [
   ['community', 'Comunitat'], ['impact', 'Impacte'], ['profile', 'Perfil'], ['history', 'Historial JSON'],
 ]
 
+// La propera cita activa del donant (o la que s'acaba de mostrar, amb l'estat actualitzat)
+function pickAppointment(appts, current) {
+  const same = current && appts.find((a) => a.id === current.id)
+  if (same) return same
+  return appts.filter((a) => a.status === 'scheduled' && new Date(a.start) > new Date()).at(0) || null
+}
+
+const isBackoffice = () => window.location.hash.startsWith('#/backoffice')
+
 export default function App() {
+  const [bo, setBo] = useState(isBackoffice)
+  useEffect(() => {
+    const onHash = () => setBo(isBackoffice())
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+  return bo ? <Backoffice /> : <DonorApp />
+}
+
+function DonorApp() {
   const [screen, setScreen] = useState('login')
   const [toast, setToast] = useState(null)
   const [state, setState] = useState({
     typeId: 'plasma',
     pointCode: 'BST-MOB-UPC',
     appointment: null,
-    posts: POSTS,
-    donations: DONATIONS,
+    posts: [],
+    donations: [],
+    loading: true,
+    error: null,
   })
+
+  // Carrega les dades de la base de dades i les manté actualitzades
+  const refresh = useCallback(async () => {
+    try {
+      const [posts, donations, appts] = await Promise.all([
+        listPosts(), listDonations({ donorId: DONOR.id }), listAppointments({ donorId: DONOR.id }),
+      ])
+      setState((st) => ({ ...st, posts, donations, appointment: pickAppointment(appts, st.appointment), loading: false, error: null }))
+    } catch (e) {
+      setState((st) => ({ ...st, loading: false, error: e.message }))
+    }
+  }, [])
+  useEffect(() => {
+    refresh()
+    return subscribe(refresh)
+  }, [refresh])
 
   const go = (s) => {
     setScreen(s)
@@ -54,7 +93,7 @@ export default function App() {
   }
 
   const [tab, title] = META[screen]
-  const props = { state, update, go, notify }
+  const props = { state, update, go, notify, refresh }
   const loggedIn = screen !== 'login'
 
   const SCREENS = { login: Login, home: Home, donate: Donate, booking: Booking, confirm: Confirmation, community: Community, impact: Impact, profile: Profile, history: History }
@@ -76,6 +115,10 @@ export default function App() {
           <p><Icon name="code" size={15} /> Registre de donacions exportable en <b>JSON</b> per als sistemes actuals del BST.</p>
           <p><Icon name="star" size={15} /> Missatges del fòrum amb valoració de <b>temps</b>, <b>satisfacció</b> i <b>si tornaria a donar</b> (1–5 estrelles).</p>
         </div>
+        <a className="bo-link" href="#/backoffice" target="_blank" rel="noreferrer">
+          <Icon name="building" size={18} /> Obrir el backoffice del BST
+        </a>
+        <span className={`mode mode-${MODE}`}><i /> {MODE === 'supabase' ? 'Connectat a Supabase (temps real)' : 'Mode local · dades al navegador'}</span>
       </aside>
 
       <div className="phone">
@@ -98,6 +141,7 @@ export default function App() {
           </header>
 
           <div className="screen-body" key={screen}>
+            {state.error && <div className="db-error">No s'ha pogut connectar amb la base de dades: {state.error}</div>}
             <Screen {...props} />
           </div>
 

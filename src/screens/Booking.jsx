@@ -4,6 +4,7 @@ import { Button, Card, Chip } from '../components/ui.jsx'
 import { DONOR, DONATION_TYPES, POINTS } from '../data.js'
 import { DAY_NAMES, MONTHS_CAP, nextDays } from '../lib/dates.js'
 import { appointmentRecord } from '../lib/bstRecord.js'
+import { createAppointment } from '../lib/db.js'
 
 const MORNING = ['09:30', '10:15', '11:45']
 const AFTERNOON = ['16:30', '17:15', '18:00', '19:15']
@@ -16,6 +17,7 @@ export default function Booking({ state, update, go, notify }) {
   const [day, setDay] = useState(0)
   const [time, setTime] = useState('10:15')
   const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [contact, setContact] = useState({ name: DONOR.fullName, phone: DONOR.phone, email: DONOR.email })
 
   // Avui no es poden triar hores ja passades
@@ -24,13 +26,24 @@ export default function Booking({ state, update, go, notify }) {
   const available = [...MORNING, ...AFTERNOON].filter((t) => !past(t)).length
   const valid = contact.name.trim() && /^\+?[\d\s]{9,}$/.test(contact.phone) && /\S+@\S+\.\S+/.test(contact.email) && !past(time)
 
-  const confirm = () => {
+  const confirm = async () => {
     const start = new Date(days[day])
     start.setHours(Number(time.slice(0, 2)), Number(time.slice(3)))
     const appointmentId = `CITA-${start.getFullYear()}-${String(Math.floor(Math.random() * 900000) + 100000)}`
     const record = appointmentRecord({ appointmentId, typeId: type.id, pointCode: point.code, start, contact })
-    update({ appointment: { id: appointmentId, start: start.toISOString(), pointCode: point.code, typeId: type.id, record } })
-    go('confirm')
+    setSaving(true)
+    try {
+      const appt = await createAppointment({
+        id: appointmentId, donorId: DONOR.id, donorName: contact.name, phone: contact.phone, email: contact.email,
+        typeId: type.id, pointCode: point.code, start: start.toISOString(), status: 'scheduled', record,
+      })
+      update({ appointment: appt })
+      go('confirm')
+    } catch (e) {
+      notify(`Error en desar la cita: ${e.message}`)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const field = (key, label, type = 'text') => (
@@ -106,7 +119,7 @@ export default function Booking({ state, update, go, notify }) {
         <Icon name={editing ? 'check' : 'pencil'} size={15} /> {editing ? 'Fet, guardar les dades' : 'Hi ha alguna dada incorrecte? Edita-les'}
       </button>
 
-      <Button icon="calendarPlus" onClick={confirm} disabled={!valid}>Confirmar Reserva d'Hora</Button>
+      <Button icon="calendarPlus" onClick={confirm} disabled={!valid || saving}>{saving ? 'Desant…' : "Confirmar Reserva d'Hora"}</Button>
       {past(time) && <p className="center small red">Aquesta hora ja ha passat. Tria'n una altra.</p>}
       <p className="center small muted">Pots modificar o cancel·lar la teva cita en qualsevol moment sense cost.</p>
     </div>

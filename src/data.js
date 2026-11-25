@@ -42,6 +42,15 @@ export const POINTS = [
   },
 ]
 
+// Tots els centres (els tres primers apareixen al mapa de «Donar")
+export const CENTERS = [
+  ...POINTS,
+  { code: 'BST-TRU', name: 'Hospital Dr. Josep Trueta', kind: 'hospital', icon: 'hospital', address: 'Av. de França s/n, 17007 Girona', zone: 'Gironès' },
+  { code: 'BST-MOB-UAB', name: 'Unitat mòbil UAB', kind: 'mobile_unit', icon: 'bus', address: 'Plaça Cívica, 08193 Bellaterra', zone: 'Vallès Occ.' },
+]
+
+export const VOLUME_ML = { whole_blood: 450, plasma: 600, platelets: 250, tissue_marrow: null }
+
 // Historial de donacions del donant (registres ja completats)
 export const DONATIONS = [
   { id: 'DON-2024-031501', type: 'whole_blood', date: '2024-03-15T10:20:00+01:00', volume: 450, center: 'BST-HCB' },
@@ -54,32 +63,32 @@ export const ZONES = ['Barcelona - Barcelonès', 'Gironès', 'Vallès Occ.', 'Ba
 
 export const POSTS = [
   {
-    id: 1, author: 'Laia Rovira', place: 'Barcelona - Barcelonès', zone: 'Barcelona - Barcelonès', minutesAgo: 10,
+    id: 1, centerCode: 'BST-MOB-UPC', author: 'Laia Rovira', place: 'Barcelona - Barcelonès', zone: 'Barcelona - Barcelonès', minutesAgo: 10,
     text: 'Acabo de donar sang a l\'autobús de la UPC! Molt ràpid i l\'equip súper amable. Animeu-vos!',
     ratings: { time: 5, satisfaction: 5, again: 5 },
   },
   {
-    id: 2, author: 'Pol Casals', place: 'Campus Nord UPC, Barcelona', zone: 'Barcelona - Barcelonès', minutesAgo: 120,
+    id: 2, centerCode: null, author: 'Pol Casals', place: 'Campus Nord UPC, Barcelona', zone: 'Barcelona - Barcelonès', minutesAgo: 120,
     text: 'Algú sap si cal demanar cita prèvia per a donació de plasma aquesta tarda?',
     ratings: null,
   },
   {
-    id: 3, author: 'Mireia Font', place: 'Hospital Clínic, Barcelona', zone: 'Barcelona - Barcelonès', minutesAgo: 1440,
+    id: 3, centerCode: 'BST-HCB', author: 'Mireia Font', place: 'Hospital Clínic, Barcelona', zone: 'Barcelona - Barcelonès', minutesAgo: 1440,
     text: 'Primera vegada que dono plaquetes a l\'Hospital Clínic, experiència de 10!',
     ratings: { time: 3, satisfaction: 5, again: 5 },
   },
   {
-    id: 4, author: 'Arnau Puig', place: 'Barcelona - Barcelonès', zone: 'Barcelona - Barcelonès', minutesAgo: 4320,
+    id: 4, centerCode: null, author: 'Arnau Puig', place: 'Barcelona - Barcelonès', zone: 'Barcelona - Barcelonès', minutesAgo: 4320,
     text: 'Recordeu que les reserves de 0− estan una mica baixes aquesta setmana. Qui pugui apropar-se a qualsevol punt fix serà de gran ajuda!',
     ratings: null,
   },
   {
-    id: 5, author: 'Júlia Serra', place: 'Hospital Dr. Josep Trueta, Girona', zone: 'Gironès', minutesAgo: 2880,
+    id: 5, centerCode: 'BST-TRU', author: 'Júlia Serra', place: 'Hospital Dr. Josep Trueta, Girona', zone: 'Gironès', minutesAgo: 2880,
     text: 'Vam anar tota la classe a donar al Trueta. Una mica d\'espera però val la pena.',
     ratings: { time: 2, satisfaction: 4, again: 4 },
   },
   {
-    id: 6, author: 'Oriol Mas', place: 'Unitat mòbil UAB, Bellaterra', zone: 'Vallès Occ.', minutesAgo: 5760,
+    id: 6, centerCode: 'BST-MOB-UAB', author: 'Oriol Mas', place: 'Unitat mòbil UAB, Bellaterra', zone: 'Vallès Occ.', minutesAgo: 5760,
     text: 'Plasma fet entre classes. 45 minuts i a dinar!',
     ratings: { time: 4, satisfaction: 5, again: 5 },
   },

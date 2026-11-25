@@ -6,7 +6,7 @@ export default function Profile({ state, go, notify }) {
   const total = state.donations.length
   const volume = state.donations.reduce((a, d) => a + d.volume, 0)
   const count = (t) => state.donations.filter((d) => d.type === t).length
-  const last = new Date(Math.max(...state.donations.map((d) => new Date(d.date))))
+  const last = state.donations.length ? new Date(Math.max(...state.donations.map((d) => new Date(d.date)))) : new Date()
 
   return (
     <div className="content">

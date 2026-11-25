@@ -57,6 +57,38 @@ Si el missatge és una pregunta, es pot desactivar la valoració. El fòrum most
 **mitjana** de les valoracions de la zona filtrada, una dada útil per al BST per
 detectar punts amb massa espera o experiències millorables.
 
+## Backoffice del BST i base de dades
+
+L'app i el backoffice comparteixen una base de dades **Supabase** (PostgreSQL gestionat):
+l'app hi escriu i el backoffice en llegeix, **en temps real**.
+
+```
+App del donant ──escriu──▶ Supabase ──llegeix──▶ Backoffice del BST ──JSON──▶ Sistemes del BST
+ (cites, fòrum)           (taules)               (#/backoffice)
+```
+
+El backoffice s'obre a **`#/backoffice`** (també hi ha un enllaç al costat del mòbil) i té:
+
+- **Resum**: cites programades, donacions del mes, satisfacció mitjana i % que tornaria a donar.
+- **Cites**: les reserves que arriben de l'app; el personal les marca com a **fetes** (es crea la
+  donació, que apareix a l'historial del donant) o **no presentat**.
+- **Donacions**: totes les donacions i l'**exportació JSON** per als sistemes del BST.
+- **Valoracions**: mitjana de temps, satisfacció i «tornaria a donar» per punt de donació, amb avís
+  quan un punt té mala nota de temps.
+
+Tot es filtra per **zona geogràfica**.
+
+### Configuració
+
+- Esquema, polítiques i dades de demo: [`supabase/schema.sql`](supabase/schema.sql).
+- Connexió: fitxer `.env` (`VITE_SUPABASE_URL` i `VITE_SUPABASE_ANON_KEY`, la clau publicable).
+- Sense `.env`, tot funciona igual en **mode local** (dades al navegador, sincronitzades entre pestanyes).
+- Tota la lectura i escriptura passa per [`src/lib/db.js`](src/lib/db.js).
+
+> **Seguretat del prototip:** com que no hi ha inici de sessió real, les polítiques RLS deixen
+> llegir i escriure amb la clau pública. En producció caldria Supabase Auth perquè cada donant
+> vegi només les seves dades i el backoffice sigui només per al personal del BST.
+
 ## Executar en local
 
 Cal Node.js 18 o superior.
