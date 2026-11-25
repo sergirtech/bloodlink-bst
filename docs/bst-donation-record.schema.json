@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bst.cat/schemas/donation-record/1.0.json",
+  "title": "Registre de donació BST App",
+  "description": "Format d'intercanvi entre la BST App i els sistemes del Banc de Sang i Teixits. Dos tipus de registre: 'appointment' (cita reservada) i 'donation_history' (donacions completades).",
+  "type": "object",
+  "required": ["schema_version", "record_type", "generated_at", "source", "donor"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "record_type": { "enum": ["appointment", "donation_history"] },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "source": {
+      "type": "object",
+      "required": ["system", "app_version", "channel"],
+      "properties": {
+        "system": { "type": "string" },
+        "app_version": { "type": "string" },
+        "channel": { "enum": ["mobile_app", "web", "staff_terminal"] }
+      }
+    },
+    "donor": { "$ref": "#/$defs/donor" },
+    "appointment": { "$ref": "#/$defs/appointment" },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "total_donations": { "type": "integer", "minimum": 0 },
+        "total_volume_ml": { "type": "integer", "minimum": 0 },
+        "by_type": { "type": "object", "additionalProperties": { "type": "integer" } }
+      }
+    },
+    "donations": { "type": "array", "items": { "$ref": "#/$defs/donation" } }
+  },
+  "allOf": [
+    { "if": { "properties": { "record_type": { "const": "appointment" } } }, "then": { "required": ["appointment"] } },
+    { "if": { "properties": { "record_type": { "const": "donation_history" } } }, "then": { "required": ["summary", "donations"] } }
+  ],
+  "$defs": {
+    "donation_type": { "enum": ["whole_blood", "plasma", "platelets", "tissue_marrow"] },
+    "donor": {
+      "type": "object",
+      "required": ["donor_id", "full_name", "blood_group", "contact"],
+      "properties": {
+        "donor_id": { "type": "string", "pattern": "^BST-\\d+$" },
+        "full_name": { "type": "string" },
+        "birth_date": { "type": "string", "format": "date" },
+        "blood_group": {
+          "type": "object",
+          "required": ["abo", "rh"],
+          "properties": {
+            "abo": { "enum": ["O", "A", "B", "AB"] },
+            "rh": { "enum": ["positive", "negative"] }
+          }
+        },
+        "contact": {
+          "type": "object",
+          "properties": {
+            "email": { "type": "string", "format": "email" },
+            "phone_e164": { "type": "string", "pattern": "^\\+\\d{8,15}$" }
+          }
+        },
+        "address": {
+          "type": "object",
+          "properties": {
+            "municipality": { "type": "string" },
+            "district": { "type": ["string", "null"] },
+            "postal_code": { "type": "string", "pattern": "^\\d{5}$" }
+          }
+        },
+        "reference_center_code": { "type": ["string", "null"] }
+      }
+    },
+    "center": {
+      "type": "object",
+      "required": ["center_code"],
+      "properties": {
+        "center_code": { "type": "string" },
+        "name": { "type": ["string", "null"] },
+        "kind": { "enum": ["hospital", "mobile_unit", "fixed_point", null] },
+        "address": { "type": ["string", "null"] },
+        "zone": { "type": ["string", "null"] }
+      }
+    },
+    "appointment": {
+      "type": "object",
+      "required": ["appointment_id", "status", "donation_type", "scheduled_start", "center"],
+      "properties": {
+        "appointment_id": { "type": "string" },
+        "status": { "enum": ["scheduled", "checked_in", "completed", "cancelled", "no_show"] },
+        "donation_type": { "$ref": "#/$defs/donation_type" },
+        "scheduled_start": { "type": "string", "format": "date-time" },
+        "estimated_duration_min": { "type": "integer" },
+        "center": { "$ref": "#/$defs/center" },
+        "reminders": { "type": "object", "properties": { "sms": { "type": "boolean" }, "email": { "type": "boolean" } } },
+        "check_in": { "type": "object", "properties": { "method": { "enum": ["qr", "id_card"] }, "donor_qr_payload": { "type": "string" } } }
+      }
+    },
+    "donation": {
+      "type": "object",
+      "required": ["donation_id", "status", "donation_type", "performed_at", "center"],
+      "properties": {
+        "donation_id": { "type": "string" },
+        "status": { "enum": ["completed", "deferred", "incomplete"] },
+        "donation_type": { "$ref": "#/$defs/donation_type" },
+        "performed_at": { "type": "string", "format": "date-time" },
+        "volume_ml": { "type": ["integer", "null"], "minimum": 0 },
+        "center": { "$ref": "#/$defs/center" },
+        "appointment_id": { "type": ["string", "null"] },
+        "isbt128_donation_id": { "type": ["string", "null"], "description": "Identificador ISBT 128 de la unitat, assignat pel BST en l'extracció." }
+      }
+    }
+  }
+}
