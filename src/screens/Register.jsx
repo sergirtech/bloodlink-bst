@@ -40,8 +40,11 @@ export default function Register({ api, go }) {
     setError(null)
     try {
       const { session } = await api.signUp(f.email, f.password, f)
-      if (!session) setPending(f.email.trim()) // cal confirmar el correu
-      // amb sessió, l'app entra sola
+      // Amb sessió, l'app entra sola. Si no, s'intenta entrar directament
+      // (compte confirmat automàticament); si tampoc, cal confirmar el correu.
+      if (!session) {
+        try { await api.signIn(f.email, f.password) } catch { setPending(f.email.trim()) }
+      }
     } catch (err) {
       setError(err.message)
     } finally {
