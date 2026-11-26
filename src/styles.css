@@ -17,18 +17,7 @@ button:disabled { cursor: default; }
 p { line-height: 1.45; }
 
 /* ───────── Escenari ───────── */
-.stage { min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; gap: 56px; padding: 32px 24px; }
-.notes { max-width: 320px; padding-top: 30px; display: flex; flex-direction: column; gap: 14px; position: sticky; top: 32px; }
-.notes-kicker { font-size: 12px; font-weight: 700; color: var(--red); letter-spacing: .06em; text-transform: uppercase; }
-.notes h1 { font-size: 40px; font-weight: 800; letter-spacing: -.02em; }
-.notes p { color: var(--text); font-size: 14px; }
-.jump { display: flex; flex-wrap: wrap; gap: 6px; }
-.jump button { padding: 7px 12px; border-radius: 99px; background: #fff; font-size: 13px; font-weight: 600; color: var(--text); box-shadow: var(--shadow); }
-.jump button.on { background: var(--red); color: #fff; }
-.notes-box { background: #fff; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow); }
-.notes-box p { display: flex; gap: 8px; align-items: flex-start; }
-.notes-box svg { margin-top: 2px; color: var(--red); }
-@media (max-width: 900px) { .notes { display: none; } }
+.stage { min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 32px 24px; }
 
 .phone { width: 414px; height: 896px; border-radius: 54px; padding: 12px; background: #0E0B12; box-shadow: 0 30px 80px rgba(19, 27, 46, .3); flex: none; }
 .phone-screen { position: relative; height: 100%; border-radius: 44px; overflow: hidden; background: var(--bg); display: flex; flex-direction: column; }
@@ -274,11 +263,8 @@ p { line-height: 1.45; }
 .list-row b { font-size: 16px; font-weight: 600; }
 
 /* ───────── Enllaç al backoffice i estat de la connexió ───────── */
-.bo-link { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-radius: 14px; background: var(--ink); color: #fff; font-weight: 700; font-size: 14px; text-decoration: none; }
-.bo-link:hover { background: #23304D; }
-.mode { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--text); }
-.mode i, .live { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #F59E0B; }
-.mode-supabase i, .live.supabase { background: #22C55E; box-shadow: 0 0 0 3px rgba(34,197,94,.2); }
+.live { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #F59E0B; }
+.live.supabase { background: #22C55E; box-shadow: 0 0 0 3px rgba(34,197,94,.2); }
 .db-error { margin: 12px 20px 0; padding: 10px 12px; border-radius: 12px; background: var(--red-50); color: var(--red); font-size: 12px; font-weight: 600; }
 .center-select { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .center-select select { flex: 1; max-width: 210px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: #fff; padding: 0 8px; font: inherit; font-size: 13px; font-weight: 600; }

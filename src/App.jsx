@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Icon from './components/Icon.jsx'
 import { Avatar } from './components/ui.jsx'
 import { DONOR } from './data.js'
-import { MODE, listPosts, listDonations, listAppointments, subscribe } from './lib/db.js'
+import { listPosts, listDonations, listAppointments, subscribe } from './lib/db.js'
 import Backoffice from './backoffice/Backoffice.jsx'
 import Login from './screens/Login.jsx'
 import Home from './screens/Home.jsx'
@@ -27,11 +27,6 @@ const META = {
   confirm: ['donate', 'Donar'], community: ['community', 'Comunitat'], impact: ['impact', 'Impacte'],
   profile: ['home', 'El teu perfil'], history: ['home', 'Historial'],
 }
-
-const JUMP = [
-  ['login', "Inici de sessió"], ['home', 'Inici'], ['donate', 'Donar'], ['booking', "Reserva d'hora"],
-  ['community', 'Comunitat'], ['impact', 'Impacte'], ['profile', 'Perfil'], ['history', 'Historial JSON'],
-]
 
 // La propera cita activa del donant (o la que s'acaba de mostrar, amb l'estat actualitzat)
 function pickAppointment(appts, current) {
@@ -101,26 +96,6 @@ function DonorApp() {
 
   return (
     <main className="stage">
-      <aside className="notes">
-        <span className="notes-kicker">Prototip · Banc de Sang i Teixits</span>
-        <h1>BST App</h1>
-        <p>Prototip navegable del disseny d'Adrian Ursu, Álvaro García i Sergi Romero.</p>
-        <nav className="jump">
-          {JUMP.map(([id, l]) => (
-            <button key={id} className={screen === id ? 'on' : ''} onClick={() => go(id)}>{l}</button>
-          ))}
-        </nav>
-        <div className="notes-box">
-          <b>Novetats d'aquesta versió</b>
-          <p><Icon name="code" size={15} /> Registre de donacions exportable en <b>JSON</b> per als sistemes actuals del BST.</p>
-          <p><Icon name="star" size={15} /> Missatges del fòrum amb valoració de <b>temps</b>, <b>satisfacció</b> i <b>si tornaria a donar</b> (1–5 estrelles).</p>
-        </div>
-        <a className="bo-link" href="#/backoffice" target="_blank" rel="noreferrer">
-          <Icon name="building" size={18} /> Obrir el backoffice del BST
-        </a>
-        <span className={`mode mode-${MODE}`}><i /> {MODE === 'supabase' ? 'Connectat a Supabase (temps real)' : 'Mode local · dades al navegador'}</span>
-      </aside>
-
       <div className="phone">
         <div className="phone-screen">
           <header className="appbar">

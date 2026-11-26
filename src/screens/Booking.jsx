@@ -8,22 +8,47 @@ import { createAppointment } from '../lib/db.js'
 
 const MORNING = ['09:30', '10:15', '11:45']
 const AFTERNOON = ['16:30', '17:15', '18:00', '19:15']
-const LABELS = ['AVUI', 'DEMÀ', 'PROPER']
+const SLOTS = [...MORNING, ...AFTERNOON]
+const toMin = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3))
+const nowMin = () => { const n = new Date(); return n.getHours() * 60 + n.getMinutes() }
+const isToday = (d) => d.toDateString() === new Date().toDateString()
+const isPast = (d, t) => isToday(d) && toMin(t) <= nowMin()
+
+// Etiqueta segons la data real (un diumenge, el primer dia ja no és «avui»)
+function dayLabel(d) {
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  if (isToday(d)) return 'AVUI'
+  if (d.toDateString() === tomorrow.toDateString()) return 'DEMÀ'
+  return DAY_NAMES[d.getDay()].slice(0, 3).toUpperCase()
+}
+
+// Tres dies amb hores lliures: si avui ja no en queda cap, comença demà
+function bookableDays() {
+  return nextDays(4).filter((d) => SLOTS.some((t) => !isPast(d, t))).slice(0, 3)
+}
+const firstFree = (d) => SLOTS.find((t) => !isPast(d, t))
+
+// El punt obre de dilluns a dissabte, de 9:00 a 20:00
+const openNow = () => { const n = new Date(); return n.getDay() !== 0 && nowMin() >= 540 && nowMin() < 1200 }
 
 export default function Booking({ state, update, go, notify }) {
   const point = POINTS.find((p) => p.code === state.pointCode)
   const type = DONATION_TYPES.find((t) => t.id === state.typeId)
-  const days = nextDays(3)
+  const [days] = useState(bookableDays)
   const [day, setDay] = useState(0)
-  const [time, setTime] = useState('10:15')
+  const [time, setTime] = useState(() => firstFree(days[0]))
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [contact, setContact] = useState({ name: DONOR.fullName, phone: DONOR.phone, email: DONOR.email })
 
-  // Avui no es poden triar hores ja passades
-  const now = new Date()
-  const past = (t) => day === 0 && Number(t.slice(0, 2)) * 60 + Number(t.slice(3)) <= now.getHours() * 60 + now.getMinutes()
-  const available = [...MORNING, ...AFTERNOON].filter((t) => !past(t)).length
+  // No es poden triar hores ja passades
+  const past = (t) => isPast(days[day], t)
+  const available = SLOTS.filter((t) => !past(t)).length
+  const pickDay = (i) => {
+    setDay(i)
+    if (isPast(days[i], time)) setTime(firstFree(days[i]))
+  }
   const valid = contact.name.trim() && /^\+?[\d\s]{9,}$/.test(contact.phone) && /\S+@\S+\.\S+/.test(contact.email) && !past(time)
 
   const confirm = async () => {
@@ -66,7 +91,9 @@ export default function Booking({ state, update, go, notify }) {
       <Card>
         <div className="row between top">
           <div className="grow">
-            <Chip tone="teal-soft"><i className="dot teal-bg" /> OBERT ARA</Chip>
+            {openNow()
+              ? <Chip tone="teal-soft"><i className="dot teal-bg" /> OBERT ARA</Chip>
+              : <Chip tone="outline">TANCAT · obre a les 9:00</Chip>}
             <h2 className="h-lg mt6">{point.name}</h2>
             <p className="small muted row gap6 top"><Icon name="pin" size={14} color="#B70011" /> {point.address}</p>
           </div>
@@ -85,8 +112,8 @@ export default function Booking({ state, update, go, notify }) {
       </div>
       <div className="days">
         {days.map((d, i) => (
-          <button key={i} className={day === i ? 'on' : ''} onClick={() => setDay(i)}>
-            <span>{LABELS[i]}</span><b>{d.getDate()}</b><span>{DAY_NAMES[d.getDay()]}</span>
+          <button key={i} className={day === i ? 'on' : ''} onClick={() => pickDay(i)}>
+            <span>{dayLabel(d)}</span><b>{d.getDate()}</b><span>{DAY_NAMES[d.getDay()]}</span>
           </button>
         ))}
       </div>
@@ -116,7 +143,7 @@ export default function Booking({ state, update, go, notify }) {
       </Card>
 
       <button className="link center small row center-row gap6" onClick={() => setEditing(!editing)}>
-        <Icon name={editing ? 'check' : 'pencil'} size={15} /> {editing ? 'Fet, guardar les dades' : 'Hi ha alguna dada incorrecte? Edita-les'}
+        <Icon name={editing ? 'check' : 'pencil'} size={15} /> {editing ? 'Fet, guardar les dades' : 'Hi ha alguna dada incorrecta? Edita-les'}
       </button>
 
       <Button icon="calendarPlus" onClick={confirm} disabled={!valid || saving}>{saving ? 'Desant…' : "Confirmar Reserva d'Hora"}</Button>

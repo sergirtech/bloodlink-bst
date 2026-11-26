@@ -43,7 +43,7 @@ export default function Login({ go, notify }) {
       </div>
 
       <p className="center">No tens compte? <button type="button" className="link red strong underline" onClick={() => notify('El registre es fa amb el teu DNI al punt de donació')}>Registra't aquí</button></p>
-      <p className="center muted small row center-row gap6"><Icon name="shield" size={15} /> Plataforma oficial del Banc de Sang i Teixits</p>
+      <p className="center muted small row center-row gap6"><Icon name="shield" size={15} /> Prototip conceptual · no és una app oficial del BST</p>
     </form>
   )
 }
