@@ -156,9 +156,11 @@ function DonorSession({ notify, toast }) {
   // Carrega les dades i les manté actualitzades en temps real
   const refresh = useCallback(async () => {
     try {
-      const [donor, posts, donations, appointments] = await Promise.all([
-        api.getMyDonor(), api.listPosts(), api.listDonations(), api.listAppointments(),
-      ])
+      // Sempre filtrat pel donant (a més de la seguretat RLS de la base de dades)
+      const donor = await api.getMyDonor()
+      const [posts, donations, appointments] = donor
+        ? await Promise.all([api.listPosts(), api.listDonations(donor.id), api.listAppointments(donor.id)])
+        : [[], [], []]
       setState((st) => ({
         ...st, donor, posts, donations, appointments,
         appointment: pickAppointment(appointments, st.appointment),

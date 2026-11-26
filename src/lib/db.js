@@ -128,8 +128,16 @@ function makeApi(storageKey, detectSessionInUrl) {
     }).select().single())),
 
     /* Cites i donacions (RLS: el donant només rep les seves) */
-    listAppointments: async () => check(await sb.from('appointments').select('*').order('scheduled_start', { ascending: true })).map(apptFromRow),
-    listDonations: async () => check(await sb.from('donations').select('*').order('performed_at', { ascending: false })).map(donationFromRow),
+    listAppointments: async (donorId) => {
+      let q = sb.from('appointments').select('*').order('scheduled_start', { ascending: true })
+      if (donorId) q = q.eq('donor_id', donorId)
+      return check(await q).map(apptFromRow)
+    },
+    listDonations: async (donorId) => {
+      let q = sb.from('donations').select('*').order('performed_at', { ascending: false })
+      if (donorId) q = q.eq('donor_id', donorId)
+      return check(await q).map(donationFromRow)
+    },
     /** Places ocupades per franja: { 'ISO': n } */
     slotUsage: async (center, from, to) => Object.fromEntries(
       check(await sb.rpc('slot_usage', { p_center: center, p_from: from.toISOString(), p_to: to.toISOString() }))

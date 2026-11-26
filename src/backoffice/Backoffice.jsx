@@ -27,32 +27,15 @@ const isNew = (iso) => iso && Date.now() - new Date(iso) < 5 * 60000
 /* ───────── Accés: només personal del BST ───────── */
 export default function Backoffice() {
   const [session, setSession] = useState(undefined)
-  const [staff, setStaff] = useState(undefined)
 
   useEffect(() => {
     api.getSession().then((s) => setSession(s ?? null))
     return api.onAuthChange((_e, s) => setSession(s ?? null))
   }, [])
-  useEffect(() => {
-    if (!session) { setStaff(session === null ? null : undefined); return }
-    setStaff(undefined)
-    api.getMyStaff().then(setStaff).catch(() => setStaff(null))
-  }, [session?.user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (session === undefined || (session && staff === undefined)) return <div className="bo-gate"><span className="spinner" /></div>
+  // DEMO: qualsevol compte amb sessió pot entrar al backoffice (no es comprova la taula staff)
+  if (session === undefined) return <div className="bo-gate"><span className="spinner" /></div>
   if (!session) return <StaffLogin />
-  if (!staff) {
-    return (
-      <div className="bo-gate">
-        <div className="bo-card bo-login">
-          <h1>Sense accés</h1>
-          <p className="muted small">El compte <b>{session.user.email}</b> no és personal del BST. Demana l'alta a l'administrador.</p>
-          <button className="bo-btn primary big" onClick={() => api.signOut()}>Tancar sessió</button>
-        </div>
-      </div>
-    )
-  }
-  return <BackofficeApp staff={staff} email={session.user.email} />
+  return <BackofficeApp staff={{ full_name: 'Personal BST' }} email={session.user.email} />
 }
 
 function StaffLogin() {
@@ -71,7 +54,7 @@ function StaffLogin() {
       <form className="bo-card bo-login" onSubmit={submit}>
         <div className="bo-logo">
           <span className="logo"><Icon name="dropFill" size={18} color="#fff" stroke={0} /></span>
-          <div><b>BST Backoffice</b><span>Accés per al personal</span></div>
+          <div><b>BST Backoffice</b><span>Entra amb qualsevol compte de l'app</span></div>
         </div>
         <label className="bo-field">Correu<input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
         <label className="bo-field">Contrasenya<input type="password" autoComplete="current-password" value={pass} onChange={(e) => setPass(e.target.value)} required /></label>

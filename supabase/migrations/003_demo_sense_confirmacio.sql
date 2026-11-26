@@ -41,3 +41,11 @@ from auth.users u
 cross join lateral (select coalesce(u.raw_user_meta_data, '{}'::jsonb) as m) meta
 where not exists (select 1 from donors d where d.auth_user_id = u.id)
   and not exists (select 1 from staff s where s.user_id = u.id);
+
+-- DEMO: qualsevol usuari amb sessió compta com a personal del BST (pot entrar al backoffice,
+-- validar QR i tancar cites). En producció, torna a la versió de 002_auth_qr.sql:
+--   create or replace function public.is_staff() ... select exists (select 1 from staff where user_id = auth.uid())
+create or replace function public.is_staff() returns boolean
+language sql stable security definer set search_path = public as $$
+  select auth.uid() is not null
+$$;
