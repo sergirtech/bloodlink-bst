@@ -3,7 +3,7 @@ import Icon from '../components/Icon.jsx'
 import { Chip, Stars } from '../components/ui.jsx'
 import JsonViewer from '../components/JsonViewer.jsx'
 import { CENTERS, DONATION_TYPES, ZONES, RATING_FIELDS } from '../data.js'
-import { staffApi as api } from '../lib/db.js'
+import { DEMO_AUTH, staffApi as api } from '../lib/db.js'
 import { donationHistoryRecord } from '../lib/bstRecord.js'
 import { fmtDateTime, fmtDate, timeAgo } from '../lib/dates.js'
 import Scanner from './Scanner.jsx'
@@ -26,6 +26,12 @@ const isNew = (iso) => iso && Date.now() - new Date(iso) < 5 * 60000
 
 /* ───────── Accés: només personal del BST ───────── */
 export default function Backoffice() {
+  // Mode demo: s'entra directament, sense inici de sessió
+  if (DEMO_AUTH) return <BackofficeApp staff={{ full_name: 'Personal BST (demo)' }} email="mode demo" demo />
+  return <StaffGate />
+}
+
+function StaffGate() {
   const [session, setSession] = useState(undefined)
 
   useEffect(() => {
@@ -66,7 +72,7 @@ function StaffLogin() {
   )
 }
 
-function BackofficeApp({ staff, email }) {
+function BackofficeApp({ staff, email, demo }) {
   const [page, setPage] = useState('summary')
   const [zone, setZone] = useState('all')
   const [data, setData] = useState({ appointments: [], donations: [], posts: [], loading: true, error: null })
@@ -116,7 +122,7 @@ function BackofficeApp({ staff, email }) {
           <b><i className="live supabase" /> Temps real</b>
           <span>{staff.full_name} · {email}</span>
           {updatedAt && <span>Actualitzat a les {updatedAt.toLocaleTimeString('ca-ES')}</span>}
-          <button onClick={() => api.signOut()}>Tancar sessió</button>
+          {!demo && <button onClick={() => api.signOut()}>Tancar sessió</button>}
         </div>
         <a className="bo-app-link" href="#/" target="_blank" rel="noreferrer"><Icon name="phone" size={16} /> Obrir l'app del donant</a>
       </aside>
