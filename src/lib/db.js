@@ -11,6 +11,10 @@ const URL = import.meta.env.VITE_SUPABASE_URL
 const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 export const CONFIGURED = Boolean(URL && KEY)
 
+// MODE DEMO D'ACCÉS: s'entra amb qualsevol correu i contrasenya, sense Supabase Auth.
+// Per activar l'inici de sessió real, posa VITE_REAL_AUTH=true al fitxer .env.
+export const DEMO_AUTH = import.meta.env.VITE_REAL_AUTH !== 'true'
+
 /* ───────── Conversió files ↔ objectes de l'app ───────── */
 const minutesSince = (iso) => Math.max(0, Math.round((Date.now() - new Date(iso)) / 60000))
 
@@ -75,17 +79,34 @@ function makeApi(storageKey, detectSessionInUrl) {
   const sb = createClient(URL, KEY, { auth: { storageKey, detectSessionInUrl, persistSession: true, autoRefreshToken: true } })
   const redirect = () => window.location.origin + window.location.pathname
 
+  const demoKey = `${storageKey}-demo`
+  const listeners = new Set()
+  const demoSession = () => { try { return JSON.parse(localStorage.getItem(demoKey)) } catch { return null } }
+  const demoSignIn = (email, meta = {}) => {
+    const session = { user: { id: `demo-${email.trim().toLowerCase()}`, email: email.trim(), user_metadata: meta } }
+    localStorage.setItem(demoKey, JSON.stringify(session))
+    listeners.forEach((cb) => cb('SIGNED_IN', session))
+    return { session, user: session.user }
+  }
+
   return {
     /* Sessió */
-    getSession: async () => (await sb.auth.getSession()).data.session,
+    getSession: async () => (DEMO_AUTH ? demoSession() : (await sb.auth.getSession()).data.session),
     // No s'ha de fer cap crida a Supabase dins del callback (pot bloquejar la sessió)
     onAuthChange: (cb) => {
+      if (DEMO_AUTH) { listeners.add(cb); return () => listeners.delete(cb) }
       const { data } = sb.auth.onAuthStateChange((event, session) => cb(event, session))
       return () => data.subscription.unsubscribe()
     },
-    signIn: async (email, password) => check(await sb.auth.signInWithPassword({ email: email.trim(), password })),
+    signIn: async (email, password) => {
+      if (DEMO_AUTH) {
+        if (!email.trim() || !password) throw new Error('Escriu un correu i una contrasenya (en la demo serveix qualsevol).')
+        return demoSignIn(email)
+      }
+      return check(await sb.auth.signInWithPassword({ email: email.trim(), password }))
+    },
     /** Registre: les dades del perfil van a les metadades i un trigger crea el donant. */
-    signUp: async (email, password, profile) => check(await sb.auth.signUp({
+    signUp: async (email, password, profile) => DEMO_AUTH ? demoSignIn(email, { full_name: profile.fullName }) : check(await sb.auth.signUp({
       email: email.trim(), password,
       options: {
         emailRedirectTo: redirect(),
@@ -96,12 +117,17 @@ function makeApi(storageKey, detectSessionInUrl) {
         },
       },
     })),
-    signOut: async () => { await sb.auth.signOut() },
-    resetPassword: async (email) => check(await sb.auth.resetPasswordForEmail(email.trim(), { redirectTo: redirect() })),
-    updatePassword: async (password) => check(await sb.auth.updateUser({ password })),
+    signOut: async () => {
+      if (DEMO_AUTH) { localStorage.removeItem(demoKey); listeners.forEach((cb) => cb('SIGNED_OUT', null)); return }
+      await sb.auth.signOut()
+    },
+    resetPassword: async (email) => (DEMO_AUTH ? null : check(await sb.auth.resetPasswordForEmail(email.trim(), { redirectTo: redirect() }))),
+    updatePassword: async (password) => (DEMO_AUTH ? null : check(await sb.auth.updateUser({ password }))),
 
     /* Donant */
     getMyDonor: async () => {
+      // Demo: tothom entra com el donant de demo
+      if (DEMO_AUTH) return donorFromRow(check(await sb.from('donors').select('*').eq('id', DEMO_DONOR_ID).maybeSingle()))
       const { data: { user } } = await sb.auth.getUser()
       if (!user) return null
       const mine = check(await sb.from('donors').select('*').eq('auth_user_id', user.id).maybeSingle())

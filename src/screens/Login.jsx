@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
-import { emailOk } from '../lib/donor.js'
+import { DEMO_AUTH } from '../lib/db.js'
 
 export default function Login({ api, go }) {
   const [email, setEmail] = useState('')
@@ -10,7 +10,7 @@ export default function Login({ api, go }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
 
-  const valid = emailOk(email) && pass.length > 0
+  const valid = email.trim().length > 0 && pass.length > 0
 
   const submit = async (e) => {
     e.preventDefault()
@@ -41,7 +41,7 @@ export default function Login({ api, go }) {
         <label className="field-label" htmlFor="email">Correu electrònic</label>
         <div className="input">
           <Icon name="mail" size={20} />
-          <input id="email" type="email" autoComplete="email" placeholder="nom@exemple.cat" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input id="email" type="text" autoComplete="email" placeholder="nom@exemple.cat" value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
         <div className="row between">
           <label className="field-label" htmlFor="pass">Contrasenya</label>
@@ -52,6 +52,7 @@ export default function Login({ api, go }) {
           <input id="pass" type={show ? 'text' : 'password'} autoComplete="current-password" placeholder="••••••••" value={pass} onChange={(e) => setPass(e.target.value)} />
           <button type="button" onClick={() => setShow(!show)} aria-label={show ? 'Amagar contrasenya' : 'Mostrar contrasenya'}><Icon name={show ? 'eyeOff' : 'eye'} size={20} /></button>
         </div>
+        {DEMO_AUTH && <p className="xs muted center">Mode demo: entra amb qualsevol correu i contrasenya.</p>}
         {error && <p className="form-error" role="alert"><Icon name="alert" size={15} /> {error}</p>}
         <Button type="submit" icon="login" disabled={!valid || busy}>{busy ? 'Entrant…' : 'Iniciar sessió'}</Button>
       </div>

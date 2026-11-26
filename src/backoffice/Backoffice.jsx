@@ -54,9 +54,9 @@ function StaffLogin() {
       <form className="bo-card bo-login" onSubmit={submit}>
         <div className="bo-logo">
           <span className="logo"><Icon name="dropFill" size={18} color="#fff" stroke={0} /></span>
-          <div><b>BST Backoffice</b><span>Entra amb qualsevol compte de l'app</span></div>
+          <div><b>BST Backoffice</b><span>Mode demo: qualsevol correu i contrasenya</span></div>
         </div>
-        <label className="bo-field">Correu<input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
+        <label className="bo-field">Correu<input type="text" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
         <label className="bo-field">Contrasenya<input type="password" autoComplete="current-password" value={pass} onChange={(e) => setPass(e.target.value)} required /></label>
         {error && <p className="form-error"><Icon name="alert" size={15} /> {error}</p>}
         <button className="bo-btn primary big" disabled={busy}>{busy ? 'Entrant…' : 'Entrar'}</button>
