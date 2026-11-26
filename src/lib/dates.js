@@ -17,10 +17,10 @@ export const timeAgo = (min) => {
   return `Fa ${Math.round(min / 1440)} dies`
 }
 
-/** Propers dies laborables a partir d'avui (s'exclou diumenge). */
-export function nextDays(count = 3) {
+/** Propers dies laborables a partir d'avui o de `from` (s'exclou diumenge). */
+export function nextDays(count = 3, from = new Date()) {
   const out = []
-  const d = new Date()
+  const d = new Date(Math.max(Date.now(), +from))
   d.setHours(0, 0, 0, 0)
   while (out.length < count) {
     if (d.getDay() !== 0) out.push(new Date(d))

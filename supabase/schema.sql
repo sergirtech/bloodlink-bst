@@ -2,6 +2,7 @@
 --  BST App · Esquema de base de dades (Supabase / PostgreSQL)
 --  Executa aquest fitxer sencer a Supabase → SQL Editor → Run.
 --  Es pot tornar a executar: esborra i recrea les taules de la demo.
+--  DESPRÉS executa supabase/migrations/002_auth_qr.sql (inici de sessió, RLS i QR).
 -- ════════════════════════════════════════════════════════════════
 
 drop view if exists v_ratings_by_center, v_kpis cascade;

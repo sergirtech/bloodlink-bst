@@ -3,44 +3,105 @@ import Icon from '../components/Icon.jsx'
 import { Chip, Stars } from '../components/ui.jsx'
 import JsonViewer from '../components/JsonViewer.jsx'
 import { CENTERS, DONATION_TYPES, ZONES, RATING_FIELDS } from '../data.js'
-import { MODE, listAppointments, listDonations, listPosts, subscribe, completeAppointment, setAppointmentStatus, resetLocal } from '../lib/db.js'
+import { staffApi as api } from '../lib/db.js'
 import { donationHistoryRecord } from '../lib/bstRecord.js'
 import { fmtDateTime, fmtDate, timeAgo } from '../lib/dates.js'
+import Scanner from './Scanner.jsx'
 
 const NAV = [
   ['summary', 'medal', 'Resum'],
+  ['scan', 'qr', 'Escàner QR'],
   ['appointments', 'calendar', 'Cites'],
   ['donations', 'dropFill', 'Donacions'],
   ['ratings', 'star', 'Valoracions'],
 ]
-const STATUS = {
+export const STATUS = {
   scheduled: ['Programada', 'indigo'], checked_in: ['Arribat', 'teal-soft'], completed: ['Feta', 'teal'],
   cancelled: ['Cancel·lada', 'outline'], no_show: ['No presentat', 'red'],
 }
-const TYPE = Object.fromEntries(DONATION_TYPES.map((t) => [t.id, t]))
-const CENTER = Object.fromEntries(CENTERS.map((c) => [c.code, c]))
+export const TYPE = Object.fromEntries(DONATION_TYPES.map((t) => [t.id, t]))
+export const CENTER = Object.fromEntries(CENTERS.map((c) => [c.code, c]))
 const avg = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null)
 const isNew = (iso) => iso && Date.now() - new Date(iso) < 5 * 60000
 
+/* ───────── Accés: només personal del BST ───────── */
 export default function Backoffice() {
+  const [session, setSession] = useState(undefined)
+  const [staff, setStaff] = useState(undefined)
+
+  useEffect(() => {
+    api.getSession().then((s) => setSession(s ?? null))
+    return api.onAuthChange((_e, s) => setSession(s ?? null))
+  }, [])
+  useEffect(() => {
+    if (!session) { setStaff(session === null ? null : undefined); return }
+    setStaff(undefined)
+    api.getMyStaff().then(setStaff).catch(() => setStaff(null))
+  }, [session?.user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (session === undefined || (session && staff === undefined)) return <div className="bo-gate"><span className="spinner" /></div>
+  if (!session) return <StaffLogin />
+  if (!staff) {
+    return (
+      <div className="bo-gate">
+        <div className="bo-card bo-login">
+          <h1>Sense accés</h1>
+          <p className="muted small">El compte <b>{session.user.email}</b> no és personal del BST. Demana l'alta a l'administrador.</p>
+          <button className="bo-btn primary big" onClick={() => api.signOut()}>Tancar sessió</button>
+        </div>
+      </div>
+    )
+  }
+  return <BackofficeApp staff={staff} email={session.user.email} />
+}
+
+function StaffLogin() {
+  const [email, setEmail] = useState('')
+  const [pass, setPass] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const submit = async (e) => {
+    e.preventDefault()
+    setBusy(true)
+    setError(null)
+    try { await api.signIn(email, pass) } catch (err) { setError(err.message); setBusy(false) }
+  }
+  return (
+    <div className="bo-gate">
+      <form className="bo-card bo-login" onSubmit={submit}>
+        <div className="bo-logo">
+          <span className="logo"><Icon name="dropFill" size={18} color="#fff" stroke={0} /></span>
+          <div><b>BST Backoffice</b><span>Accés per al personal</span></div>
+        </div>
+        <label className="bo-field">Correu<input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
+        <label className="bo-field">Contrasenya<input type="password" autoComplete="current-password" value={pass} onChange={(e) => setPass(e.target.value)} required /></label>
+        {error && <p className="form-error"><Icon name="alert" size={15} /> {error}</p>}
+        <button className="bo-btn primary big" disabled={busy}>{busy ? 'Entrant…' : 'Entrar'}</button>
+        <a className="small muted" href="#/">← Anar a l'app del donant</a>
+      </form>
+    </div>
+  )
+}
+
+function BackofficeApp({ staff, email }) {
   const [page, setPage] = useState('summary')
   const [zone, setZone] = useState('all')
   const [data, setData] = useState({ appointments: [], donations: [], posts: [], loading: true, error: null })
   const [updatedAt, setUpdatedAt] = useState(null)
   const [toast, setToast] = useState(null)
 
-  const notify = (m) => { setToast(m); clearTimeout(window.__bt); window.__bt = setTimeout(() => setToast(null), 2400) }
+  const notify = (m) => { setToast(m); clearTimeout(window.__bt); window.__bt = setTimeout(() => setToast(null), 2800) }
 
   const load = useCallback(async () => {
     try {
-      const [appointments, donations, posts] = await Promise.all([listAppointments(), listDonations(), listPosts()])
+      const [appointments, donations, posts] = await Promise.all([api.listAppointments(), api.listDonations(), api.listPosts()])
       setData({ appointments, donations, posts, loading: false, error: null })
       setUpdatedAt(new Date())
     } catch (e) {
       setData((d) => ({ ...d, loading: false, error: e.message }))
     }
   }, [])
-  useEffect(() => { load(); return subscribe(load) }, [load])
+  useEffect(() => { load(); return api.subscribe(load) }, [load])
 
   // Filtre per zona geogràfica aplicat a totes les seccions
   const inZone = (code) => zone === 'all' || CENTER[code]?.zone === zone
@@ -50,7 +111,8 @@ export default function Backoffice() {
     posts: data.posts.filter((p) => zone === 'all' || p.zone === zone),
   }), [data, zone]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const props = { f, notify, setPage }
+  const pending = data.appointments.filter((a) => a.status === 'scheduled' || a.status === 'checked_in').length
+  const props = { f, notify, setPage, reload: load }
   return (
     <div className="bo">
       <aside className="bo-side">
@@ -62,18 +124,16 @@ export default function Backoffice() {
           {NAV.map(([id, ic, l]) => (
             <button key={id} className={page === id ? 'on' : ''} onClick={() => setPage(id)}>
               <Icon name={ic} size={18} stroke={ic === 'dropFill' ? 0 : 2} /> {l}
-              {id === 'appointments' && data.appointments.some((a) => a.status === 'scheduled') && <span className="bo-count">{data.appointments.filter((a) => a.status === 'scheduled').length}</span>}
+              {id === 'appointments' && pending > 0 && <span className="bo-count">{pending}</span>}
             </button>
           ))}
         </nav>
         <span className="grow" />
         <div className="bo-status">
-          <b><i className={`live ${MODE}`} /> {MODE === 'supabase' ? 'Supabase · temps real' : 'Mode local'}</b>
-          <span>{MODE === 'supabase'
-            ? 'Les dades arriben directament de l\'app.'
-            : 'Dades compartides amb l\'app en aquest navegador.'}</span>
+          <b><i className="live supabase" /> Temps real</b>
+          <span>{staff.full_name} · {email}</span>
           {updatedAt && <span>Actualitzat a les {updatedAt.toLocaleTimeString('ca-ES')}</span>}
-          {MODE === 'local' && <button onClick={() => { resetLocal(); notify('Dades de demo restaurades') }}>Restaurar dades de demo</button>}
+          <button onClick={() => api.signOut()}>Tancar sessió</button>
         </div>
         <a className="bo-app-link" href="#/" target="_blank" rel="noreferrer"><Icon name="phone" size={16} /> Obrir l'app del donant</a>
       </aside>
@@ -82,21 +142,24 @@ export default function Backoffice() {
         <header className="bo-head">
           <div>
             <h1>{NAV.find((n) => n[0] === page)[2]}</h1>
-            <p>Dades generades per l'app BST, sense introducció manual</p>
+            <p>{page === 'scan' ? "Escaneja el QR del donant per registrar l'arribada i la donació" : "Dades generades per l'app BST, sense introducció manual"}</p>
           </div>
           <span className="grow" />
-          <label className="bo-select">
-            <Icon name="pin" size={15} />
-            <select value={zone} onChange={(e) => setZone(e.target.value)}>
-              <option value="all">Totes les zones</option>
-              {ZONES.map((z) => <option key={z}>{z}</option>)}
-            </select>
-          </label>
+          {page !== 'scan' && (
+            <label className="bo-select">
+              <Icon name="pin" size={15} />
+              <select value={zone} onChange={(e) => setZone(e.target.value)}>
+                <option value="all">Totes les zones</option>
+                {ZONES.map((z) => <option key={z}>{z}</option>)}
+              </select>
+            </label>
+          )}
         </header>
         {data.error && <div className="db-error">No s'ha pogut llegir la base de dades: {data.error}</div>}
         {data.loading ? <p className="muted">Carregant dades…</p> : (
           <>
             {page === 'summary' && <Summary {...props} />}
+            {page === 'scan' && <Scanner api={api} notify={notify} reload={load} appointments={data.appointments} />}
             {page === 'appointments' && <Appointments {...props} />}
             {page === 'donations' && <Donations {...props} />}
             {page === 'ratings' && <Ratings {...props} />}
@@ -163,7 +226,7 @@ function Summary({ f, setPage }) {
 }
 
 /* ───────── Cites ───────── */
-function Appointments({ f, notify }) {
+function Appointments({ f, notify, reload }) {
   const [status, setStatus] = useState('scheduled')
   const [busy, setBusy] = useState(null)
   const [json, setJson] = useState(null)
@@ -171,7 +234,7 @@ function Appointments({ f, notify }) {
 
   const act = async (a, fn, msg) => {
     setBusy(a.id)
-    try { await fn(); notify(msg) } catch (e) { notify(`Error: ${e.message}`) } finally { setBusy(null) }
+    try { await fn(); notify(msg); reload() } catch (e) { notify(`Error: ${e.message}`) } finally { setBusy(null) }
   }
 
   return (
@@ -179,7 +242,7 @@ function Appointments({ f, notify }) {
       <div className="bo-card-head">
         <h2>Cites reservades</h2>
         <div className="chips">
-          {[['scheduled', 'Programades'], ['completed', 'Fetes'], ['no_show', 'No presentats'], ['cancelled', 'Cancel·lades'], ['all', 'Totes']].map(([k, l]) => (
+          {[['scheduled', 'Programades'], ['checked_in', 'Arribats'], ['completed', 'Fetes'], ['no_show', 'No presentats'], ['cancelled', 'Cancel·lades'], ['all', 'Totes']].map(([k, l]) => (
             <Chip key={k} tone="pill" active={status === k} onClick={() => setStatus(k)}>{l}</Chip>
           ))}
         </div>
@@ -197,9 +260,10 @@ function Appointments({ f, notify }) {
                 <td>{fmtDateTime(a.start)}</td>
                 <td><Chip tone={STATUS[a.status][1]}>{STATUS[a.status][0]}</Chip></td>
                 <td className="actions">
-                  {a.status === 'scheduled' && <>
-                    <button className="bo-btn primary" disabled={busy === a.id} onClick={() => act(a, () => completeAppointment(a), 'Donació registrada')}><Icon name="check" size={14} /> Marcar feta</button>
-                    <button className="bo-btn" disabled={busy === a.id} onClick={() => act(a, () => setAppointmentStatus(a.id, 'no_show'), 'Marcada com a no presentat')}>No presentat</button>
+                  {a.status === 'scheduled' && <button className="bo-btn" disabled={busy === a.id} onClick={() => act(a, () => api.checkIn(a.id), 'Arribada registrada')}>Arribat</button>}
+                  {['scheduled', 'checked_in'].includes(a.status) && <>
+                    <button className="bo-btn primary" disabled={busy === a.id} onClick={() => act(a, () => api.completeAppointment(a.id), 'Donació registrada')}><Icon name="check" size={14} /> Marcar feta</button>
+                    <button className="bo-btn" disabled={busy === a.id} onClick={() => act(a, () => api.setAppointmentStatus(a.id, 'no_show'), 'Marcada com a no presentat')}>No presentat</button>
                   </>}
                   <button className="bo-btn" onClick={() => setJson(json?.id === a.id ? null : a)}><Icon name="code" size={14} /> JSON</button>
                 </td>

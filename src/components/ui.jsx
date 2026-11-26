@@ -1,4 +1,5 @@
 import Icon from './Icon.jsx'
+import { initials } from '../lib/donor.js'
 
 export const Chip = ({ children, tone = 'soft', icon, onClick, active, className = '' }) => (
   <span className={`chip chip-${active ? 'active' : tone} ${onClick ? 'clickable' : ''} ${className}`} onClick={onClick}>
@@ -24,8 +25,8 @@ export const IconBox = ({ name, tone = 'red', size = 40, round, onClick }) => (
   </span>
 )
 
-export const Avatar = ({ size = 40, ring }) => (
-  <span className={`avatar ${ring ? 'ring' : ''}`} style={{ width: size, height: size, fontSize: size * 0.36 }}>MV</span>
+export const Avatar = ({ name = '', size = 40, ring }) => (
+  <span className={`avatar ${ring ? 'ring' : ''}`} style={{ width: size, height: size, fontSize: size * 0.36 }}>{initials(name)}</span>
 )
 
 // Valoració d'1 a 5 estrelles: interactiva si rep onChange

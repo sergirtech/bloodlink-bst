@@ -6,7 +6,7 @@
 //  - camps opcionals a null en lloc d'ometre'ls, perquè l'estructura sigui fixa
 // L'esquema complet és a docs/bst-donation-record.schema.json
 
-import { DONOR, CENTERS, DONATION_TYPES } from '../data.js'
+import { CENTERS, DONATION_TYPES } from '../data.js'
 
 export const SCHEMA_ID = 'https://bst.cat/schemas/donation-record/1.0.json'
 export const SCHEMA_VERSION = '1.0.0'
@@ -14,19 +14,20 @@ export const SCHEMA_VERSION = '1.0.0'
 const pointByCode = (code) => CENTERS.find((p) => p.code === code)
 const typeById = (id) => DONATION_TYPES.find((t) => t.id === id)
 
-function donorBlock() {
-  const [abo, rh] = [DONOR.bloodGroup.replace(/[+-]/, ''), DONOR.bloodGroup.endsWith('-') ? 'negative' : 'positive']
+const e164 = (phone) => (phone ? phone.replace(/\s/g, '').replace(/^(\d{9})$/, '+34$1') : null)
+
+function donorBlock(donor) {
+  if (!donor) return null
+  const g = donor.bloodGroup
+  const abo = g ? g.replace(/[+-]/, '') : null
   return {
-    donor_id: DONOR.id,
-    full_name: DONOR.fullName,
-    birth_date: DONOR.birthDate,
-    blood_group: { abo: abo === '0' ? 'O' : abo, rh },
-    contact: {
-      email: DONOR.email,
-      phone_e164: DONOR.phone.replace(/\s/g, ''),
-    },
-    address: { municipality: DONOR.municipality, district: DONOR.district, postal_code: DONOR.postalCode },
-    reference_center_code: DONOR.referenceCenter.code,
+    donor_id: donor.id,
+    full_name: donor.fullName,
+    birth_date: donor.birthDate || null,
+    blood_group: g ? { abo: abo === '0' ? 'O' : abo, rh: g.endsWith('-') ? 'negative' : 'positive' } : null,
+    contact: { email: donor.email || null, phone_e164: e164(donor.phone) },
+    address: { municipality: donor.municipality || null, district: donor.district || null, postal_code: donor.postalCode || null },
+    reference_center_code: donor.referenceCenterCode || null,
   }
 }
 
@@ -49,25 +50,26 @@ function envelope(recordType, payload) {
 }
 
 /** Registre d'una cita reservada (status: scheduled). */
-export function appointmentRecord({ appointmentId, typeId, pointCode, start, contact }) {
+// L'appointment_id el posa la base de dades en reservar
+export function appointmentRecord({ donor, typeId, pointCode, start, contact }) {
   const t = typeById(typeId)
   return envelope('appointment', {
-    donor: { ...donorBlock(), full_name: contact.name, contact: { email: contact.email, phone_e164: contact.phone.replace(/\s/g, '') } },
+    donor: { ...donorBlock(donor), full_name: contact.name, contact: { email: contact.email, phone_e164: e164(contact.phone) } },
     appointment: {
-      appointment_id: appointmentId,
+      appointment_id: null,
       status: 'scheduled',
       donation_type: typeId,
       scheduled_start: start.toISOString(),
       estimated_duration_min: t.minutes,
       center: centerBlock(pointCode),
       reminders: { sms: true, email: true },
-      check_in: { method: 'qr', donor_qr_payload: `BST:${DONOR.id}` },
+      check_in: { method: 'qr', qr_format: 'bst.checkin/v1' },
     },
   })
 }
 
-/** Historial complet de donacions completades del donant. */
-export function donationHistoryRecord(donations) {
+/** Historial de donacions completades. Amb `donor`, d'un sol donant; sense, export del BST (tots). */
+export function donationHistoryRecord(donations, donor = null) {
   const totals = donations.reduce((acc, d) => {
     acc.count += 1
     acc.volume_ml += d.volume || 0
@@ -76,10 +78,11 @@ export function donationHistoryRecord(donations) {
   }, { count: 0, volume_ml: 0, by_type: {} })
 
   return envelope('donation_history', {
-    donor: donorBlock(),
+    donor: donorBlock(donor),
     summary: { total_donations: totals.count, total_volume_ml: totals.volume_ml, by_type: totals.by_type },
     donations: donations.map((d) => ({
       donation_id: d.id,
+      donor_id: d.donorId || null,
       status: d.status || 'completed',
       donation_type: d.type,
       performed_at: d.date,

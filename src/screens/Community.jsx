@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react'
 import Icon from '../components/Icon.jsx'
 import { Button, Card, Chip, Stars } from '../components/ui.jsx'
-import { DONOR, ZONES, RATING_FIELDS, CENTERS } from '../data.js'
-import { addPost } from '../lib/db.js'
+import { ZONES, RATING_FIELDS, CENTERS } from '../data.js'
 import { timeAgo } from '../lib/dates.js'
 
 const EMPTY = { time: 0, satisfaction: 0, again: 0 }
@@ -24,20 +23,21 @@ function RatingRows({ ratings, onChange, size = 16 }) {
   )
 }
 
-export default function Community({ state, update, notify }) {
+export default function Community({ state, donor, api, update, notify }) {
+  const myZone = donor.zone || ZONES[0]
   const [text, setText] = useState('')
   const [rate, setRate] = useState(true)
   const [ratings, setRatings] = useState(EMPTY)
   const [zone, setZone] = useState('mine')
   const [order, setOrder] = useState('new')
   const [showFilters, setShowFilters] = useState(true)
-  const [center, setCenter] = useState('BST-MOB-UPC')
+  const [center, setCenter] = useState(donor.referenceCenterCode || 'BST-MOB-UPC')
   const [saving, setSaving] = useState(false)
 
   const posts = useMemo(() => {
-    const filtered = state.posts.filter((p) => zone === 'all' || (zone === 'mine' ? p.zone === DONOR.zone : p.zone === zone))
+    const filtered = state.posts.filter((p) => zone === 'all' || (zone === 'mine' ? p.zone === myZone : p.zone === zone))
     return filtered.sort((a, b) => (order === 'new' ? a.minutesAgo - b.minutesAgo : b.minutesAgo - a.minutesAgo))
-  }, [state.posts, zone, order])
+  }, [state.posts, zone, order, myZone])
 
   // Mitjana de valoracions dels missatges visibles: dada útil també per al BST
   const rated = posts.filter((p) => p.ratings)
@@ -49,8 +49,8 @@ export default function Community({ state, update, notify }) {
     const c = rate ? CENTERS.find((x) => x.code === center) : null
     setSaving(true)
     try {
-      const post = await addPost({
-        author: DONOR.fullName, place: c ? c.name : DONOR.zone, zone: c ? c.zone : DONOR.zone, centerCode: c ? c.code : null,
+      const post = await api.addPost({
+        place: c ? c.name : myZone, zone: c ? c.zone : myZone, centerCode: c ? c.code : null,
         text: text.trim(), ratings: rate ? ratings : null,
       })
       update({ posts: [post, ...state.posts.filter((p) => p.id !== post.id)] })
@@ -71,18 +71,18 @@ export default function Community({ state, update, notify }) {
     <div className="content">
       <Card>
         <h1 className="h-lg row gap10"><Icon name="users" size={24} color="#B70011" /> Fòrum de la Comunitat</h1>
-        <Chip tone="indigo" icon="pin">Zona activa: <span className="teal">{DONOR.zone}</span></Chip>
+        <Chip tone="indigo" icon="pin">Zona activa: <span className="teal">{myZone}</span></Chip>
       </Card>
 
       <Card className="form">
         <span className="field-label sm">Publicant com a:</span>
         <div className="input readonly">
           <Icon name="userCircle" size={19} color="#B70011" />
-          <b className="grow">{DONOR.fullName}</b>
-          <span className="teal xs strong">{DONOR.zone}</span>
+          <b className="grow">{donor.fullName}</b>
+          <span className="teal xs strong">{myZone}</span>
         </div>
         <label className="field-label sm" htmlFor="msg">Descriu la teva experiència de donació</label>
-        <textarea id="msg" className="textarea" rows={3} placeholder="Descriu la teva experiència donant sang..." value={text} onChange={(e) => setText(e.target.value)} />
+        <textarea id="msg" className="textarea" rows={3} maxLength={2000} placeholder="Descriu la teva experiència donant sang..." value={text} onChange={(e) => setText(e.target.value)} />
 
         <div className="rate-box">
           <div className="row between">
@@ -116,7 +116,7 @@ export default function Community({ state, update, notify }) {
         <Card className="filters">
           <div className="row between">
             <span className="kicker row gap6"><Icon name="pin" size={13} color="#00655C" /> Zona geogràfica</span>
-            <span className="teal xs strong">{zone === 'mine' ? DONOR.zone : zone === 'all' ? 'Totes' : zone}</span>
+            <span className="teal xs strong">{zone === 'mine' ? myZone : zone === 'all' ? 'Totes' : zone}</span>
           </div>
           <div className="chips">
             <Chip tone="pill" active={zone === 'mine'} onClick={() => setZone('mine')}>La meva zona</Chip>

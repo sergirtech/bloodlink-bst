@@ -10,14 +10,16 @@ fet a partir del disseny de Figma d'**Adrian Ursu, Álvaro García i Sergi Romer
 
 | Pantalla | Què s'hi pot fer |
 |---|---|
-| **Inici de sessió** | Correu, contrasenya (mostrar/amagar) i accés |
-| **Inici** | Grup sanguini, nivell, botó «Donar ara», QR de donant i propera cita |
-| **Donar** | Ubicació, tipus de donació (sang, plasma, plaquetes, teixits/medul·la), mapa i punts propers |
-| **Reserva d'hora** | Dia, franja de matí o tarda, dades de contacte editables i confirmació |
-| **Confirmació** | Resum de la cita i **registre JSON** per al BST |
+| **Inici de sessió** | Accés real amb Supabase Auth; la sessió es manté en recarregar |
+| **Registre** | Alta de donant amb validació (edat 18–65, telèfon, codi postal) i consentiment RGPD |
+| **Recuperar accés** | Enllaç per correu per crear una contrasenya nova |
+| **Inici** | Grup sanguini, nivell, període de descans, **QR real** amb JSON i propera cita |
+| **Donar** | Cerca per text o **geolocalització**, distàncies reals, horari obert/tancat i tipus de donació |
+| **Reserva d'hora** | 5 dies, franges amb **places reals** (2 per franja), respecta el període de descans |
+| **Confirmació** | Resum, QR de la cita, **registre JSON** i cancel·lació |
 | **Comunitat** | Fòrum amb **valoracions d'1 a 5 estrelles**, filtres per zona i per data |
-| **Impacte** | Mil·lilitres donats, desglossament i meta de punts |
-| **Perfil** | Carnet digital, impacte acumulat, dades personals i exportació |
+| **Impacte** | Mil·lilitres, punts i nivell calculats amb les donacions reals |
+| **Perfil** | Carnet digital, **edició de dades**, renovar el QR, exportació i tancar sessió |
 | **Historial** | Donacions completades i **exportació JSON** (total o per donació) |
 
 ## Registre de donacions en JSON
@@ -57,37 +59,67 @@ Si el missatge és una pregunta, es pot desactivar la valoració. El fòrum most
 **mitjana** de les valoracions de la zona filtrada, una dada útil per al BST per
 detectar punts amb massa espera o experiències millorables.
 
+## QR del donant
+
+El QR de la pantalla d'Inici és un codi real (llegible per qualsevol escàner) que conté un JSON:
+
+```json
+{
+  "type": "bst.checkin",
+  "v": 1,
+  "donor_id": "BST-10001",
+  "token": "uuid secret del donant",
+  "appointment_id": "CITA-2026-123456",
+  "appointment_token": "uuid secret de la cita"
+}
+```
+
+- Els **tokens** són aleatoris i es guarden a la base de dades: un QR inventat o copiat d'un altre
+  donant no es pot validar. El donant pot **renovar el QR** des del perfil (invalida l'anterior).
+- Si el donant té una cita, el QR la porta; si no, només identifica el donant.
+- El personal el llegeix al backoffice (**Escàner QR**) amb la càmera, pujant una foto o enganxant el JSON.
+  La funció `verify_qr` comprova els tokens i mostra el donant i la cita; des d'allà es registra
+  l'**arribada** i la **donació feta** (que apareix a l'historial del donant en temps real).
+
 ## Backoffice del BST i base de dades
 
-L'app i el backoffice comparteixen una base de dades **Supabase** (PostgreSQL gestionat):
-l'app hi escriu i el backoffice en llegeix, **en temps real**.
+L'app i el backoffice comparteixen una base de dades **Supabase** (PostgreSQL gestionat), **en temps real**.
 
 ```
-App del donant ──escriu──▶ Supabase ──llegeix──▶ Backoffice del BST ──JSON──▶ Sistemes del BST
- (cites, fòrum)           (taules)               (#/backoffice)
+App del donant ──reserva / QR──▶ Supabase ◀──escàner / gestió── Backoffice del BST ──JSON──▶ Sistemes del BST
 ```
 
-El backoffice s'obre a **`#/backoffice`** (també hi ha un enllaç al costat del mòbil) i té:
+El backoffice s'obre afegint **`#/backoffice`** a la URL de l'app i **només hi pot entrar el personal**
+(taula `staff`). Té:
 
 - **Resum**: cites programades, donacions del mes, satisfacció mitjana i % que tornaria a donar.
-- **Cites**: les reserves que arriben de l'app; el personal les marca com a **fetes** (es crea la
-  donació, que apareix a l'historial del donant) o **no presentat**.
+- **Escàner QR**: valida el QR del donant i registra arribada, donació feta o no presentat.
+- **Cites**: les reserves que arriben de l'app i el seu estat.
 - **Donacions**: totes les donacions i l'**exportació JSON** per als sistemes del BST.
-- **Valoracions**: mitjana de temps, satisfacció i «tornaria a donar» per punt de donació, amb avís
-  quan un punt té mala nota de temps.
+- **Valoracions**: mitjana de temps, satisfacció i «tornaria a donar» per punt de donació.
 
-Tot es filtra per **zona geogràfica**.
+L'app i el backoffice tenen **sessions separades**: es poden tenir oberts alhora al mateix navegador.
 
-### Configuració
+### Seguretat
 
-- Esquema, polítiques i dades de demo: [`supabase/schema.sql`](supabase/schema.sql).
-- Connexió: fitxer `.env` (`VITE_SUPABASE_URL` i `VITE_SUPABASE_ANON_KEY`, la clau publicable).
-- Sense `.env`, tot funciona igual en **mode local** (dades al navegador, sincronitzades entre pestanyes).
-- Tota la lectura i escriptura passa per [`src/lib/db.js`](src/lib/db.js).
+- **Supabase Auth** per a donants i personal.
+- **RLS**: cada donant només veu les seves cites i donacions; el personal ho veu tot.
+- Les cites i donacions només es creen amb funcions de la base de dades (`book_appointment`,
+  `complete_appointment`…), que validen places, període de descans i permisos.
+- L'autor dels missatges del fòrum el posa la base de dades a partir de la sessió.
 
-> **Seguretat del prototip:** com que no hi ha inici de sessió real, les polítiques RLS deixen
-> llegir i escriure amb la clau pública. En producció caldria Supabase Auth perquè cada donant
-> vegi només les seves dades i el backoffice sigui només per al personal del BST.
+### Configuració (una sola vegada)
+
+1. Supabase → **SQL Editor**: executa [`supabase/schema.sql`](supabase/schema.sql) (si la base de dades és nova)
+   i després [`supabase/migrations/002_auth_qr.sql`](supabase/migrations/002_auth_qr.sql).
+2. Supabase → **Authentication → URL Configuration**: posa l'adreça de GitHub Pages com a *Site URL*
+   i afegeix-la (i `http://localhost:5173`) a *Redirect URLs*, perquè funcionin els enllaços dels correus.
+3. Supabase → **Authentication → Sign In / Providers → Email**: per a la demo, desactiva
+   *Confirm email* (el servei de correu gratuït de Supabase només envia a membres del projecte).
+   Si el deixes actiu, cal configurar un SMTP propi.
+4. Registra a l'app un compte de donant i un de personal, i executa
+   [`supabase/demo_accounts.sql`](supabase/demo_accounts.sql) amb els dos correus.
+5. Connexió: fitxer `.env` (`VITE_SUPABASE_URL` i `VITE_SUPABASE_ANON_KEY`, la clau publicable).
 
 ## Executar en local
 

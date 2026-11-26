@@ -8,12 +8,12 @@ import { fmtDate } from '../lib/dates.js'
 
 const TONE = { whole_blood: 'red', plasma: 'amber', platelets: 'teal', tissue_marrow: 'indigo' }
 
-export default function History({ state, go, notify }) {
+export default function History({ state, donor, go, notify }) {
   const [selected, setSelected] = useState(null)
   // El JSON es regenera amb la selecció: tot l'historial o una sola donació
   const record = useMemo(
-    () => donationHistoryRecord(selected ? state.donations.filter((d) => d.id === selected) : state.donations),
-    [selected, state.donations]
+    () => donationHistoryRecord(selected ? state.donations.filter((d) => d.id === selected) : state.donations, donor),
+    [selected, state.donations, donor]
   )
 
   return (
@@ -24,6 +24,7 @@ export default function History({ state, go, notify }) {
         <p className="muted">Toca una donació per exportar-ne només el registre, o exporta l'historial complet.</p>
       </div>
 
+      {state.donations.length === 0 && <p className="center muted">Encara no tens donacions registrades. Quan el BST registri la primera, apareixerà aquí.</p>}
       {state.donations.map((d) => {
         const t = DONATION_TYPES.find((x) => x.id === d.type)
         const p = POINTS.find((x) => x.code === d.center)
@@ -32,7 +33,7 @@ export default function History({ state, go, notify }) {
           <Card key={d.id} className={`point-row ${on ? 'on' : ''}`} onClick={() => setSelected(on ? null : d.id)}>
             <span className={`iconbox ib-${TONE[d.type]}`}><Icon name={t.icon} size={19} /></span>
             <div className="grow">
-              <b>{t.label} · {d.volume} ml</b>
+              <b>{t.label}{d.volume ? ` · ${d.volume} ml` : ''}</b>
               <p className="xs muted">{fmtDate(new Date(d.date))} · {p ? p.name : d.center}</p>
             </div>
             <Chip tone={on ? 'teal' : 'outline'}>{on ? 'Seleccionada' : d.id.slice(-6)}</Chip>
@@ -44,7 +45,7 @@ export default function History({ state, go, notify }) {
         data={record}
         notify={notify}
         title={selected ? `Donació ${selected}` : 'Historial complet (JSON)'}
-        filename={selected ? `${selected}.json` : `BST-84920-historial.json`}
+        filename={selected ? `${selected}.json` : `${donor.id}-historial.json`}
       />
       <p className="xs muted center">Format «donation_history» v1.0 · esquema a docs/bst-donation-record.schema.json</p>
     </div>
