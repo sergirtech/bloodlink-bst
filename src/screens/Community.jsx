@@ -49,7 +49,7 @@ export default function Community({ state, donor, api, update, notify }) {
     const c = rate ? CENTERS.find((x) => x.code === center) : null
     setSaving(true)
     try {
-      const post = await api.addPost({
+      const post = await api.addPost({ author: donor.fullName,
         place: c ? c.name : myZone, zone: c ? c.zone : myZone, centerCode: c ? c.code : null,
         text: text.trim(), ratings: rate ? ratings : null,
       })

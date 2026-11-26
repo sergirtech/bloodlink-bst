@@ -93,7 +93,7 @@ export default function Booking({ state, donor, api, update, go, notify, refresh
     setSaving(true)
     setError(null)
     try {
-      const appt = await api.bookAppointment({ typeId: type.id, pointCode: point.code, start, contact, record })
+      const appt = await api.bookAppointment({ donor, typeId: type.id, pointCode: point.code, start, contact, record })
       update({ appointment: appt })
       await refresh()
       notify('Cita reservada')
